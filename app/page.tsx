@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 type FeedbackItem = {
   id: string;
@@ -12,7 +12,6 @@ type FeedbackItem = {
 };
 
 const groups = [
-  "Semua",
   "Keaktifan",
   "Kehadiran",
   "Fokus & Tugas",
@@ -1166,10 +1165,16 @@ function withName(text: string, name: string) {
   return text.replaceAll("{{firstname}}", name.trim() || "{{firstname}}");
 }
 
+function groupAnchor(group: string) {
+  return `kategori-${group
+    .toLocaleLowerCase("id")
+    .replaceAll("&", "dan")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")}`;
+}
+
 export default function Home() {
   const [studentName, setStudentName] = useState("");
-  const [activeGroup, setActiveGroup] = useState("Semua");
-  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(feedbacks[0].id);
   const [variantIndex, setVariantIndex] = useState(0);
   const [draft, setDraft] = useState(() =>
@@ -1180,25 +1185,6 @@ export default function Home() {
   const selected =
     feedbacks.find((feedback) => feedback.id === selectedId) ?? feedbacks[0];
 
-  const filteredFeedbacks = useMemo(() => {
-    const keyword = query.trim().toLocaleLowerCase("id");
-    return feedbacks.filter((feedback) => {
-      const matchesGroup =
-        activeGroup === "Semua" || feedback.group === activeGroup;
-      const matchesSearch =
-        !keyword ||
-        feedback.title.toLocaleLowerCase("id").includes(keyword) ||
-        feedback.group.toLocaleLowerCase("id").includes(keyword) ||
-        feedback.keywords?.some((item) =>
-          item.toLocaleLowerCase("id").includes(keyword),
-        ) ||
-        feedback.variants.some((variant) =>
-          variant.toLocaleLowerCase("id").includes(keyword),
-        );
-      return matchesGroup && matchesSearch;
-    });
-  }, [activeGroup, query]);
-
   function chooseFeedback(id: string) {
     const nextFeedback =
       feedbacks.find((feedback) => feedback.id === id) ?? feedbacks[0];
@@ -1206,7 +1192,7 @@ export default function Home() {
     setVariantIndex(0);
     setDraft(withName(nextFeedback.variants[0], studentName));
     setCopied(false);
-    if (window.innerWidth < 980) {
+    if (window.innerWidth <= 860) {
       requestAnimationFrame(() =>
         document
           .getElementById("editor")
@@ -1215,11 +1201,9 @@ export default function Home() {
     }
   }
 
-  function changeVariant(direction: number) {
-    const total = selected.variants.length;
-    const nextIndex = (variantIndex + direction + total) % total;
-    setVariantIndex(nextIndex);
-    setDraft(withName(selected.variants[nextIndex], studentName));
+  function selectVariant(index: number) {
+    setVariantIndex(index);
+    setDraft(withName(selected.variants[index], studentName));
     setCopied(false);
   }
 
@@ -1248,7 +1232,7 @@ export default function Home() {
 
   return (
     <main>
-      <header className="topbar">
+      <header className="topbar" id="top">
         <a className="brand" href="#top" aria-label="Ruang Feedback">
           <span className="brand-mark" aria-hidden="true">
             R
@@ -1256,25 +1240,19 @@ export default function Home() {
           <span>Ruang Feedback</span>
         </a>
         <span className="library-count">
-          {feedbacks.length} kategori · {totalVariants} template
+          {feedbacks.length} situasi · {totalVariants} template
         </span>
       </header>
 
-      <section className="hero" id="top">
+      <section className="hero">
         <div className="hero-copy">
           <p className="eyebrow">Asisten feedback untuk pengajar</p>
-          <h1>
-            Temukan kalimat yang
-            <br />
-            <em>tepat untuk setiap murid.</em>
-          </h1>
+          <h1>Feedback yang tepat untuk setiap murid.</h1>
           <p className="hero-description">
-            Pilih kategori, sesuaikan nama, lalu salin feedback yang siap
-            dikirim—tanpa menyusun ulang dari awal.
+            Pilih situasi, sesuaikan teks, lalu salin.
           </p>
         </div>
         <div className="name-panel">
-          <span className="step-label">01 · Mulai dari nama</span>
           <label htmlFor="student-name">Nama murid</label>
           <div className="name-input-wrap">
             <input
@@ -1309,100 +1287,85 @@ export default function Home() {
             )}
           </div>
           <p>
-            Nama akan otomatis menggantikan{" "}
-            <code>{"{{firstname}}"}</code> di template.
+            Otomatis diterapkan pada feedback yang dipilih.
           </p>
         </div>
       </section>
 
-      <section className="workspace">
+      <nav className="category-nav" aria-label="Navigasi kategori">
+        <div>
+          <a href="#feedback-library">Semua</a>
+          {groups.map((group) => (
+            <a href={`#${groupAnchor(group)}`} key={group}>
+              {group}
+            </a>
+          ))}
+        </div>
+      </nav>
+
+      <section className="workspace" id="feedback-library">
         <div className="library-panel">
-          <div className="section-heading">
+          <div className="library-heading">
             <div>
-              <span className="step-label">02 · Pilih situasi murid</span>
-              <h2>Kategori feedback</h2>
+              <p className="eyebrow">Pustaka feedback</p>
+              <h2>Semua situasi</h2>
             </div>
-            <label className="search-box">
-              <span aria-hidden="true">⌕</span>
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Cari kategori…"
-                aria-label="Cari kategori feedback"
-              />
-            </label>
+            <span>{feedbacks.length} situasi tersedia</span>
           </div>
 
-          <div className="group-tabs" aria-label="Filter kategori">
-            {groups.map((group) => (
-              <button
-                type="button"
-                className={activeGroup === group ? "active" : ""}
-                key={group}
-                onClick={() => setActiveGroup(group)}
-              >
-                {group}
-              </button>
-            ))}
-          </div>
+          <div className="feedback-sections">
+            {groups.map((group) => {
+              const items = feedbacks.filter(
+                (feedback) => feedback.group === group,
+              );
+              const headingId = `${groupAnchor(group)}-heading`;
 
-          <div className="result-summary">
-            <span>
-              Menampilkan <strong>{filteredFeedbacks.length}</strong> kategori
-            </span>
-            {(query || activeGroup !== "Semua") && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  setActiveGroup("Semua");
-                }}
-              >
-                Reset filter
-              </button>
-            )}
+              return (
+                <section
+                  className="feedback-section"
+                  id={groupAnchor(group)}
+                  aria-labelledby={headingId}
+                  key={group}
+                >
+                  <div className="feedback-section-heading">
+                    <h3 id={headingId}>{group}</h3>
+                    <span>{items.length} situasi</span>
+                  </div>
+                  <div className="feedback-grid">
+                    {items.map((feedback) => (
+                      <button
+                        type="button"
+                        key={feedback.id}
+                        className={`feedback-card ${
+                          selected.id === feedback.id ? "selected" : ""
+                        }`}
+                        onClick={() => chooseFeedback(feedback.id)}
+                        aria-pressed={selected.id === feedback.id}
+                      >
+                        <span className={`level-dot ${feedback.level}`} />
+                        <span className="card-content">
+                          <strong>{feedback.title}</strong>
+                          <small>
+                            {levelLabels[feedback.level]} ·{" "}
+                            {feedback.variants.length}{" "}
+                            {feedback.variants.length === 1
+                              ? "template"
+                              : "variasi"}
+                          </small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
-
-          <div className="feedback-grid">
-            {filteredFeedbacks.map((feedback) => (
-              <button
-                type="button"
-                key={feedback.id}
-                className={`feedback-card ${
-                  selected.id === feedback.id ? "selected" : ""
-                }`}
-                onClick={() => chooseFeedback(feedback.id)}
-                aria-pressed={selected.id === feedback.id}
-              >
-                <span className={`level-dot ${feedback.level}`} />
-                <span className="card-content">
-                  <span className="card-group">{feedback.group}</span>
-                  <strong>{feedback.title}</strong>
-                  <small>
-                    {feedback.variants.length}{" "}
-                    {feedback.variants.length === 1 ? "template" : "variasi"}
-                  </small>
-                </span>
-                <span className="card-arrow" aria-hidden="true">
-                  ↗
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {filteredFeedbacks.length === 0 && (
-            <div className="empty-state">
-              <span>⌕</span>
-              <h3>Kategori belum ditemukan</h3>
-              <p>Coba kata kunci lain atau tampilkan semua kategori.</p>
-            </div>
-          )}
         </div>
 
         <aside className="editor-panel" id="editor">
           <div className="editor-card">
             <div className="editor-topline">
-              <span className="step-label">03 · Sesuaikan & salin</span>
+              <span className="editor-kicker">Feedback terpilih</span>
               <span className={`level-badge ${selected.level}`}>
                 {levelLabels[selected.level]}
               </span>
@@ -1411,24 +1374,20 @@ export default function Home() {
 
             {selected.variants.length > 1 && (
               <div className="variant-nav">
-                <span>
-                  Variasi {variantIndex + 1} dari {selected.variants.length}
-                </span>
+                <span>Pilih variasi</span>
                 <div>
-                  <button
-                    type="button"
-                    onClick={() => changeVariant(-1)}
-                    aria-label="Variasi sebelumnya"
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => changeVariant(1)}
-                    aria-label="Variasi berikutnya"
-                  >
-                    →
-                  </button>
+                  {selected.variants.map((_, index) => (
+                    <button
+                      type="button"
+                      className={variantIndex === index ? "active" : ""}
+                      onClick={() => selectVariant(index)}
+                      aria-label={`Pilih variasi ${index + 1}`}
+                      aria-pressed={variantIndex === index}
+                      key={index}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -1469,27 +1428,15 @@ export default function Home() {
               {copied ? "Tersalin ke clipboard" : "Salin feedback"}
             </button>
             <p className="editor-note">
-              Anda bisa mengedit teks langsung sebelum menyalinnya.
+              Teks dapat diedit langsung sebelum disalin.
             </p>
-          </div>
-
-          <div className="legend">
-            <span>
-              <i className="positive" /> Apresiasi
-            </span>
-            <span>
-              <i className="growth" /> Pengembangan
-            </span>
-            <span>
-              <i className="attention" /> Perlu perhatian
-            </span>
           </div>
         </aside>
       </section>
 
       <footer>
         <span>Ruang Feedback</span>
-        <p>Dibuat untuk membantu pengajar memberi perhatian yang personal.</p>
+        <p>Feedback personal untuk setiap proses belajar.</p>
         <a href="#top">Kembali ke atas ↑</a>
       </footer>
     </main>
