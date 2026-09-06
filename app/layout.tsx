@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ruang Feedback — Template Feedback Murid",
+  title: "Feedback Space — Student Feedback Templates",
   description:
-    "Pilih kategori murid, sesuaikan nama, dan salin feedback yang siap dikirim.",
+    "Choose a student situation, personalize the name, and copy ready-to-use feedback.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -28,7 +28,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('feedback-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t}var l=localStorage.getItem('feedback-language');if(l!=='id'&&l!=='en'){l=(navigator.language||'').toLowerCase().startsWith('id')?'id':'en'}document.documentElement.lang=l}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
       </body>

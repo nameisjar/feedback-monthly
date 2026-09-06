@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+
+type Language = "id" | "en";
 
 type FeedbackItem = {
   id: string;
@@ -11,7 +13,28 @@ type FeedbackItem = {
   variants: string[];
 };
 
-const groups = [
+const languageEvent = "feedback-language-change";
+
+function getLanguageSnapshot(): Language {
+  return document.documentElement.lang === "id" ? "id" : "en";
+}
+
+function getServerLanguageSnapshot(): Language {
+  return "en";
+}
+
+function subscribeToLanguage(callback: () => void) {
+  window.addEventListener(languageEvent, callback);
+  return () => window.removeEventListener(languageEvent, callback);
+}
+
+function saveLanguage(language: Language) {
+  document.documentElement.lang = language;
+  window.localStorage.setItem("feedback-language", language);
+  window.dispatchEvent(new Event(languageEvent));
+}
+
+const sourceGroups = [
   "Keaktifan",
   "Kehadiran",
   "Fokus & Tugas",
@@ -36,7 +59,7 @@ const groups = [
   "Saran",
 ];
 
-const feedbacks: FeedbackItem[] = [
+const feedbackSource: FeedbackItem[] = [
   {
     id: "excellent",
     title: "Sangat Aktif & Excellent",
@@ -1153,44 +1176,370 @@ const feedbacks: FeedbackItem[] = [
   },
 ];
 
-const levelLabels = {
-  positive: "Apresiasi",
-  attention: "Perlu perhatian",
-  technical: "Teknis",
-  milestone: "Pencapaian",
-  growth: "Pengembangan",
+const groupTranslations: Record<string, string> = {
+  Keaktifan: "Participation",
+  Kehadiran: "Attendance",
+  "Fokus & Tugas": "Focus & Assignments",
+  Pemahaman: "Understanding",
+  Kemandirian: "Independent Learning",
+  Kolaborasi: "Collaboration",
+  Ketangguhan: "Learning Resilience",
+  Komunikasi: "Communication",
+  Kreativitas: "Creativity",
+  "Manajemen Proyek": "Project Management",
+  "Strategi Belajar": "Learning Strategies",
+  "Keterampilan Teknis": "Technical Skills",
+  Evaluasi: "Assessment",
+  "Kesiapan Belajar": "Learning Readiness",
+  "Perjalanan Belajar": "Learning Progress",
+  Pencapaian: "Achievements",
+  "Literasi Digital": "Digital Literacy",
+  Perkembangan: "Development",
+  "Kendala Teknis": "Technical Challenges",
+  "Murid Baru": "New Students",
+  Kelulusan: "Program Completion",
+  Saran: "Recommendations",
 };
+
+const englishContent: Record<string, [title: string, action: string]> = {
+  excellent: ["Excellent Participation", "Encourage this strong engagement through increasingly challenging questions and activities."],
+  "active-responsible": ["Active and Responsible", "Continued opportunities to take initiative will help strengthen this positive learning habit."],
+  "focused-consistent": ["Focused and Consistent", "Encourage more frequent contributions so this solid understanding can also benefit class discussions."],
+  "participation-push": ["Developing Classroom Participation", "A small goal, such as asking or answering one question per lesson, can build confidence."],
+  "low-participation": ["Limited Verbal Participation", "Offer low-pressure opportunities to share an idea through speech, chat, or a short response."],
+  passive: ["Inconsistent Classroom Responses", "Regular check-ins and simple response prompts can support more active involvement."],
+  confidence: ["Developing Learning Confidence", "Encourage independent attempts before discussion and celebrate progress rather than only correct answers."],
+  late: ["Frequent Lateness", "Arriving on time will help ensure important instructions and opening explanations are not missed."],
+  absent: ["Inconsistent Attendance", "A clear catch-up plan and more regular attendance will support continuity in learning."],
+  "inactive-late": ["Participation and Punctuality", "Setting one punctuality goal and one participation goal can make improvement easier to track."],
+  "low-focus": ["Sustaining Focus During Lessons", "Short checkpoints and a distraction-free workspace can help maintain attention."],
+  "task-consistency": ["Consistent Assignment Completion", "Breaking assignments into smaller deadlines can make completion more manageable."],
+  "inactive-task": ["Participation and Assignment Completion", "Begin with one clearly defined task and provide a simple way to report progress."],
+  "inactive-camera": ["Limited Online-Class Interaction", "Encourage responses through voice, chat, or another agreed method rather than relying on camera use alone."],
+  "rapid-growth": ["Rapid Learning Growth", "Maintain the current practice routine while introducing gradually more demanding work."],
+  "more-confident": ["Growing Confidence", "Continue providing opportunities to ask questions, attempt answers, and explain independent work."],
+  "extra-guidance": ["Additional Guidance", "Targeted practice on one foundational concept at a time will make support more effective."],
+  "quick-needs-accuracy": ["Quick Understanding and Accuracy", "A short review checklist before submission will help reduce avoidable errors."],
+  "steady-paced-progress": ["Steady, Step-by-Step Progress", "Consistent practice at a manageable pace will continue to strengthen understanding."],
+  "theory-to-practice": ["Applying Concepts in Practice", "Use varied examples and small independent projects to connect theory with application."],
+  "strengthen-foundations": ["Stronger Foundational Understanding", "Review core concepts with simple examples before increasing the level of difficulty."],
+  "quiet-strong-understanding": ["Quiet Participation and Strong Understanding", "Invite occasional explanations of completed work without treating quietness as a weakness."],
+  "active-needs-concept": ["Active Participation and Conceptual Depth", "Ask for the reasoning behind each answer to help turn enthusiasm into deeper understanding."],
+  "independent-problem-solver": ["Independent Problem Solving", "Continue encouraging comparison of different solutions and reflection on the chosen approach."],
+  "needs-step-guidance": ["Developing Learning Independence", "Have them plan and attempt the first step before requesting the next piece of guidance."],
+  "asks-help-early": ["Trying Before Requesting Help", "Use a read, try, note, and ask routine to make help-seeking more productive."],
+  "self-review-habit": ["Effective Self-Review", "Maintain the habit of checking work and identifying one improvement after each task."],
+  "fast-needs-challenge": ["Readiness for Additional Challenges", "Provide open-ended extensions or an independent project with more than one possible solution."],
+  "perfectionism-pacing": ["Careful Work and Time Management", "Set separate time limits for drafting, testing, and polishing to balance quality with completion."],
+  "supportive-peer": ["Supportive Peer Collaboration", "Encourage continued support while allowing classmates enough time to solve problems themselves."],
+  "discussion-balance": ["Balanced Contribution in Discussions", "Practice inviting others to speak and summarizing different viewpoints before deciding."],
+  "group-participation": ["Active Group Contribution", "Assigning a clear role can make participation more comfortable and measurable."],
+  "receptive-to-feedback": ["Applying Feedback Effectively", "Continue using feedback to guide revisions and begin identifying improvements independently."],
+  "explains-reasoning": ["Clear Explanation of Reasoning", "Extend this skill by comparing alternative approaches and explaining their trade-offs."],
+  "persistent-debugging": ["Persistence Through Challenges", "Maintain the habit of testing one possibility at a time and recording what has been tried."],
+  "frustrated-by-errors": ["Strategies for Handling Errors", "Pause, read the error carefully, and test one small change at a time."],
+  "learns-from-mistakes": ["Learning Positively from Mistakes", "Continue reviewing the cause of each error and applying that lesson to future work."],
+  "inconsistent-motivation": ["Consistent Learning Motivation", "Small goals and visible progress markers can help maintain momentum between lessons."],
+  "tries-new-strategies": ["Trying New Strategies", "Keep experimenting while checking each approach against the task requirements."],
+  "structured-explanation": ["Structured Explanations", "Organize responses around the problem, the chosen strategy, and the final result."],
+  "clear-presentation": ["Clear and Focused Presentation", "Continue supporting key points with relevant examples and concise explanations."],
+  "presentation-confidence": ["Presentation Confidence", "Practice one short section at a time using a few key points as prompts."],
+  "active-listening": ["Active Listening", "Wait for others to finish, summarize the main point, and then add a response."],
+  "specific-questions": ["Specific and Productive Questions", "Maintain the habit of explaining what has already been tried before asking for help."],
+  "creative-solution": ["Creative Solutions", "Continue exploring original approaches while testing that each solution meets the task goals."],
+  "extends-project": ["Extending Projects Beyond the Brief", "Complete and test the required features before adding thoughtful extensions."],
+  "adapt-the-example": ["Adapting Provided Examples", "Change one element, use different data, or add a small feature to build ownership of the work."],
+  "ideas-to-execution": ["Turning Ideas into Completed Work", "Choose one main goal, finish a simple version, and add other ideas in stages."],
+  "curious-explorer": ["Curiosity and Exploration", "Record questions and experiment results so exploration also builds organized knowledge."],
+  "plans-milestones": ["Planning Project Milestones", "Continue defining clear goals, priorities, and completion checks before beginning."],
+  "procrastination-pattern": ["Starting Work Earlier", "Use small personal deadlines from the beginning instead of relying on the final due date."],
+  "starts-needs-finishing": ["Following Work Through to Completion", "Define what finished means and complete the core requirement before starting something new."],
+  "quality-late-delivery": ["Quality Work and Timely Submission", "Reserve separate time for core work and revision so quality does not delay submission."],
+  "fast-needs-testing": ["Fast Completion and Thorough Testing", "Use remaining time to check requirements and test several different conditions."],
+  "recognizes-learning-gaps": ["Recognizing Personal Learning Needs", "Continue identifying specific gaps and selecting practice that directly addresses them."],
+  "effective-notes": ["Effective Learning Notes", "Add a brief reflection after each activity to make notes even more useful for review."],
+  "read-instructions-carefully": ["Careful Reading of Instructions", "Highlight key requirements and check each one before submitting work."],
+  "repeated-mistakes": ["Reducing Repeated Errors", "Keep an error log that records the cause, correction, and prevention strategy."],
+  "learning-routine": ["A Consistent Practice Routine", "A short, realistic practice goal between lessons will strengthen long-term retention."],
+  "strong-programming-logic": ["Strong Programming Logic", "Continue planning the solution in small logical steps before writing code."],
+  "syntax-needs-practice": ["Strong Logic and Developing Syntax", "Frequent short exercises and careful reading of error messages will improve accuracy."],
+  "independent-debugging": ["Independent Debugging", "Continue isolating problems, testing one change at a time, and verifying the result."],
+  "code-readability": ["Code Readability and Organization", "Use consistent indentation, descriptive names, and smaller well-defined sections of code."],
+  "technical-testing": ["Technical Testing Skills", "Create a short list of normal, unusual, and incorrect inputs to test before submission."],
+  "class-to-assessment": ["Applying Classroom Learning in Assessments", "Timed independent practice with varied questions will improve assessment readiness."],
+  "improving-assessment-results": ["Improving Assessment Results", "Maintain the review habits that are producing this consistent improvement."],
+  "assessment-time-management": ["Assessment Time Management", "Allocate time by question difficulty and return to challenging items after completing easier ones."],
+  "complete-assessment-answers": ["Complete Assessment Responses", "Check that every part of each question is answered with relevant reasoning."],
+  "strong-assessment-revision": ["Strong Assessment Revision", "Continue using corrections to understand mistakes rather than only changing the final answer."],
+  "punctual-and-prepared": ["Punctual and Ready to Learn", "Maintain this preparation so lesson time can be used fully and effectively."],
+  "reviews-previous-material": ["Connecting Previous and New Learning", "Continue reviewing earlier material and identifying links to each new topic."],
+  "slow-task-start": ["Starting Tasks Promptly", "Prepare materials, read the instructions, and identify the first action at the beginning of class."],
+  "prepare-device-before-class": ["Device Readiness Before Class", "Check power, connectivity, accounts, applications, and files before the lesson begins."],
+  "previews-upcoming-material": ["Preparing for Upcoming Material", "Continue previewing topics and bringing one or two initial questions to class."],
+  "steady-learning-journey": ["Stable and Sustainable Progress", "Maintain the consistent attendance, practice, and response to feedback supporting this growth."],
+  "learning-plateau": ["Moving Beyond a Learning Plateau", "Set one specific new skill target and use a different type of practice to restart progress."],
+  "catching-up-material": ["Catching Up on Missed Material", "Prioritize essential concepts and complete catch-up work in manageable stages."],
+  "returning-engagement": ["Renewed Engagement After a Setback", "Use small, consistent goals to protect this positive return to learning."],
+  "concept-breakthrough": ["A Breakthrough in a Challenging Concept", "Use this achievement as evidence that persistence and gradual practice lead to growth."],
+  "first-completed-project": ["First Completed Project", "Celebrate the full process and use the experience as a foundation for the next project."],
+  "first-independent-task": ["First Independently Completed Assignment", "Continue building independence while maintaining the habit of reviewing work."],
+  "first-presentation": ["First Presentation", "Acknowledge this step and provide another short, supportive opportunity to present."],
+  "improved-task-submission": ["Improved Assignment Submission", "Maintain the routines that have made completion and punctuality more consistent."],
+  "mastered-difficult-topic": ["Mastery of a Challenging Topic", "Reinforce this achievement by explaining the concept or applying it in a new context."],
+  "responsible-references": ["Responsible Use of References", "Continue comparing sources and adapting relevant information rather than copying it directly."],
+  "explains-ai-assisted-work": ["Explaining AI-Assisted Work", "Keep reviewing, testing, and adapting AI output before using it in an assignment."],
+  "overreliance-on-tools": ["Independent Thinking When Using Digital Tools", "Create an initial solution first, then use tools to review or extend the work."],
+  "source-attribution": ["Consistent Source Attribution", "Record the author, title, or link whenever outside material supports an assignment."],
+  "digital-class-etiquette": ["Digital Classroom Etiquette", "Keep messages relevant, respectful, and clear while allowing others time to respond."],
+  device: ["Device or Technical Difficulties", "Prepare a backup option where possible and record missed instructions when disruptions occur."],
+  internet: ["Internet Connectivity Challenges", "A backup connection or access to lesson materials afterward can reduce missed learning."],
+  "device-performance": ["Limited Device Performance", "Simplifying the working setup or arranging technical support may improve lesson continuity."],
+  "technical-effort": ["Persistence Despite Technical Challenges", "Recognize this effort and continue using practical backup strategies when problems occur."],
+  "technical-support": ["Recurring Technical Barriers", "Identify the recurring issue and arrange focused support before the next lesson."],
+  "new-adapting": ["New Student Adjustment", "Provide predictable routines and low-pressure opportunities to become familiar with the class."],
+  "new-fast": ["Quick Adjustment as a New Student", "Continue offering opportunities to connect with classmates and contribute ideas."],
+  "new-shy": ["Building Comfort as a New Student", "Start with written or small-group responses while confidence develops."],
+  "new-potential": ["Strong Potential as a New Student", "Consistent practice and clear goals will help this early potential develop."],
+  graduated: ["Program Completion", "Celebrate the progress made and identify a meaningful next learning challenge."],
+  "general-suggestion": ["General Development Recommendation", "Set one realistic practice goal and review progress regularly."],
+  "academic-suggestion": ["Academic Recommendation", "Use regular independent practice to strengthen understanding and assignment consistency."],
+  "activity-suggestion": ["Participation and Confidence Recommendation", "Provide frequent, manageable opportunities to ask questions and share ideas."],
+  "discipline-suggestion": ["Time-Management Recommendation", "Use reminders and a simple routine to support punctual attendance and timely work."],
+  "high-potential": ["Recommendation for a High-Potential Student", "Offer more complex challenges and an independent project that encourages creativity."],
+};
+
+function createEnglishVariant(
+  title: string,
+  action: string,
+  level: FeedbackItem["level"],
+  index: number,
+) {
+  const topic = title.toLocaleLowerCase("en");
+  const openers = {
+    positive: [
+      `{{firstname}} has demonstrated ${topic}.`,
+      `During recent lessons, {{firstname}} has consistently shown ${topic}.`,
+      `{{firstname}} continues to make encouraging progress through ${topic}.`,
+    ],
+    growth: [
+      `{{firstname}} is making progress, while ${topic} remains an important area for development.`,
+      `Recent work shows that {{firstname}} would benefit from further development in ${topic}.`,
+      `With focused support, {{firstname}} can build greater consistency in ${topic}.`,
+    ],
+    attention: [
+      `{{firstname}} currently needs additional support with ${topic}.`,
+      `Closer attention to ${topic} would help {{firstname}} make more consistent progress.`,
+      `${title} is an important priority for {{firstname}} at this stage.`,
+    ],
+    technical: [
+      `{{firstname}}'s learning has been affected by ${topic}.`,
+      `Technical conditions related to ${topic} have occasionally interrupted {{firstname}}'s learning.`,
+      `Addressing ${topic} would help {{firstname}} participate more consistently.`,
+    ],
+    milestone: [
+      `{{firstname}} has reached an important milestone: ${topic}.`,
+      `A meaningful achievement for {{firstname}} is ${topic}.`,
+      `{{firstname}} should be proud of this progress in ${topic}.`,
+    ],
+  } satisfies Record<FeedbackItem["level"], string[]>;
+
+  return `${openers[level][index % openers[level].length]} ${action}`;
+}
+
+const englishFeedbacks: FeedbackItem[] = feedbackSource.map((feedback) => {
+  const content = englishContent[feedback.id];
+  if (!content) throw new Error(`Missing English content for ${feedback.id}`);
+  const [title, action] = content;
+
+  return {
+    ...feedback,
+    title,
+    group: feedback.group,
+    keywords: undefined,
+    variants: feedback.variants.map((_, index) =>
+      createEnglishVariant(title, action, feedback.level, index),
+    ),
+  };
+});
+
+const ui = {
+  id: {
+    brand: "Ruang Feedback",
+    situations: "situasi",
+    templates: "template",
+    theme: "Tema",
+    themeLabel: "Ganti tema terang atau gelap",
+    languageLabel: "Pilih bahasa",
+    eyebrow: "Asisten feedback untuk pengajar",
+    heading: "Feedback yang tepat untuk setiap murid.",
+    description: "Pilih situasi, sesuaikan teks, lalu salin.",
+    studentName: "Nama murid",
+    namePlaceholder: "Contoh: Ando",
+    clearName: "Hapus nama murid",
+    nameHint: "Otomatis diterapkan pada feedback yang dipilih.",
+    categoryFilter: "Filter berdasarkan kategori",
+    category: "Kategori",
+    all: "Semua",
+    allCategories: "Semua kategori",
+    library: "Pustaka feedback",
+    allSituations: "Semua situasi",
+    situation: "situasi",
+    selected: "Feedback terpilih",
+    chooseVariation: "Pilih variasi",
+    variationLabel: "Pilih variasi",
+    feedbackText: "Teks feedback",
+    characters: "karakter",
+    restore: "Pulihkan template",
+    copy: "Salin feedback",
+    copied: "Tersalin ke clipboard",
+    editorHint: "Teks dapat diedit langsung sebelum disalin.",
+    footer: "Feedback personal untuk setiap proses belajar.",
+    backToTop: "Kembali ke atas ↑",
+    confirmLanguage:
+      "Mengganti bahasa akan menggantikan teks yang telah Anda edit. Lanjutkan?",
+    levels: {
+      positive: "Apresiasi",
+      attention: "Perlu perhatian",
+      technical: "Teknis",
+      milestone: "Pencapaian",
+      growth: "Pengembangan",
+    },
+  },
+  en: {
+    brand: "Feedback Space",
+    situations: "situations",
+    templates: "templates",
+    theme: "Theme",
+    themeLabel: "Toggle light or dark theme",
+    languageLabel: "Choose language",
+    eyebrow: "Feedback assistant for educators",
+    heading: "The right feedback for every student.",
+    description: "Choose a situation, personalize the text, and copy.",
+    studentName: "Student name",
+    namePlaceholder: "Example: Andrew",
+    clearName: "Clear student name",
+    nameHint: "Automatically applied to the selected feedback.",
+    categoryFilter: "Filter by category",
+    category: "Category",
+    all: "All",
+    allCategories: "All categories",
+    library: "Feedback library",
+    allSituations: "All situations",
+    situation: "situation",
+    selected: "Selected feedback",
+    chooseVariation: "Choose a variation",
+    variationLabel: "Choose variation",
+    feedbackText: "Feedback text",
+    characters: "characters",
+    restore: "Restore template",
+    copy: "Copy feedback",
+    copied: "Copied to clipboard",
+    editorHint: "You can edit the text before copying it.",
+    footer: "Personal feedback for every learning journey.",
+    backToTop: "Back to top ↑",
+    confirmLanguage:
+      "Switching languages will replace your edited text. Continue?",
+    levels: {
+      positive: "Appreciation",
+      attention: "Needs attention",
+      technical: "Technical",
+      milestone: "Achievement",
+      growth: "Development",
+    },
+  },
+} as const;
+
+function localizedGroup(group: string, language: Language) {
+  return language === "id" ? group : groupTranslations[group];
+}
 
 function withName(text: string, name: string) {
   return text.replaceAll("{{firstname}}", name.trim() || "{{firstname}}");
 }
 
-function groupAnchor(group: string) {
-  return `kategori-${group
-    .toLocaleLowerCase("id")
-    .replaceAll("&", "dan")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")}`;
-}
-
 export default function Home() {
+  const language = useSyncExternalStore(
+    subscribeToLanguage,
+    getLanguageSnapshot,
+    getServerLanguageSnapshot,
+  );
+  const t = ui[language];
+  const localizedFeedbacks =
+    language === "id" ? feedbackSource : englishFeedbacks;
   const [studentName, setStudentName] = useState("");
-  const [selectedId, setSelectedId] = useState(feedbacks[0].id);
+  const [activeGroup, setActiveGroup] = useState("all");
+  const [selectedId, setSelectedId] = useState(englishFeedbacks[0].id);
   const [variantIndex, setVariantIndex] = useState(0);
   const [draft, setDraft] = useState(() =>
-    withName(feedbacks[0].variants[0], ""),
+    withName(englishFeedbacks[0].variants[0], ""),
   );
+  const [draftLanguage, setDraftLanguage] = useState<Language>("en");
+  const [isDirty, setIsDirty] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const selected =
-    feedbacks.find((feedback) => feedback.id === selectedId) ?? feedbacks[0];
+    localizedFeedbacks.find((feedback) => feedback.id === selectedId) ??
+    localizedFeedbacks[0];
+
+  const visibleFeedbacks =
+    activeGroup === "all"
+      ? localizedFeedbacks
+      : localizedFeedbacks.filter(
+          (feedback) => feedback.group === activeGroup,
+        );
+
+  const currentDraft =
+    draftLanguage === language
+      ? draft
+      : withName(selected.variants[variantIndex], studentName);
+
+  function toggleTheme() {
+    const root = document.documentElement;
+    const isDark =
+      root.dataset.theme === "dark" ||
+      (!root.dataset.theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const nextTheme = isDark ? "light" : "dark";
+    root.dataset.theme = nextTheme;
+    window.localStorage.setItem("feedback-theme", nextTheme);
+  }
+
+  function changeLanguage(nextLanguage: Language) {
+    if (nextLanguage === language) return;
+    if (isDirty && !window.confirm(t.confirmLanguage)) return;
+
+    const nextFeedbacks =
+      nextLanguage === "id" ? feedbackSource : englishFeedbacks;
+    const nextSelected =
+      nextFeedbacks.find((feedback) => feedback.id === selectedId) ??
+      nextFeedbacks[0];
+    const nextVariantIndex = Math.min(
+      variantIndex,
+      nextSelected.variants.length - 1,
+    );
+
+    setVariantIndex(nextVariantIndex);
+    setDraft(
+      withName(nextSelected.variants[nextVariantIndex], studentName),
+    );
+    setDraftLanguage(nextLanguage);
+    setIsDirty(false);
+    setCopied(false);
+    saveLanguage(nextLanguage);
+    document.title =
+      nextLanguage === "id"
+        ? "Ruang Feedback — Template Feedback Murid"
+        : "Feedback Space — Student Feedback Templates";
+  }
 
   function chooseFeedback(id: string) {
     const nextFeedback =
-      feedbacks.find((feedback) => feedback.id === id) ?? feedbacks[0];
+      localizedFeedbacks.find((feedback) => feedback.id === id) ??
+      localizedFeedbacks[0];
     setSelectedId(id);
     setVariantIndex(0);
     setDraft(withName(nextFeedback.variants[0], studentName));
+    setDraftLanguage(language);
+    setIsDirty(false);
     setCopied(false);
     if (window.innerWidth <= 860) {
       requestAnimationFrame(() =>
@@ -1204,16 +1553,18 @@ export default function Home() {
   function selectVariant(index: number) {
     setVariantIndex(index);
     setDraft(withName(selected.variants[index], studentName));
+    setDraftLanguage(language);
+    setIsDirty(false);
     setCopied(false);
   }
 
   async function copyDraft() {
-    if (!draft.trim()) return;
+    if (!currentDraft.trim()) return;
     try {
-      await navigator.clipboard.writeText(draft);
+      await navigator.clipboard.writeText(currentDraft);
     } catch {
       const temporary = document.createElement("textarea");
-      temporary.value = draft;
+      temporary.value = currentDraft;
       temporary.style.position = "fixed";
       temporary.style.opacity = "0";
       document.body.appendChild(temporary);
@@ -1225,7 +1576,7 @@ export default function Home() {
     window.setTimeout(() => setCopied(false), 1800);
   }
 
-  const totalVariants = feedbacks.reduce(
+  const totalVariants = localizedFeedbacks.reduce(
     (total, feedback) => total + feedback.variants.length,
     0,
   );
@@ -1233,27 +1584,55 @@ export default function Home() {
   return (
     <main>
       <header className="topbar" id="top">
-        <a className="brand" href="#top" aria-label="Ruang Feedback">
+        <a className="brand" href="#top" aria-label={t.brand}>
           <span className="brand-mark" aria-hidden="true">
-            R
+            {language === "id" ? "R" : "F"}
           </span>
-          <span>Ruang Feedback</span>
+          <span>{t.brand}</span>
         </a>
-        <span className="library-count">
-          {feedbacks.length} situasi · {totalVariants} template
-        </span>
+        <div className="topbar-actions">
+          <span className="library-count">
+            {localizedFeedbacks.length} {t.situations} · {totalVariants}{" "}
+            {t.templates}
+          </span>
+          <div className="language-toggle" aria-label={t.languageLabel}>
+            <button
+              type="button"
+              className={language === "id" ? "active" : ""}
+              onClick={() => changeLanguage("id")}
+              aria-pressed={language === "id"}
+            >
+              ID
+            </button>
+            <button
+              type="button"
+              className={language === "en" ? "active" : ""}
+              onClick={() => changeLanguage("en")}
+              aria-pressed={language === "en"}
+            >
+              EN
+            </button>
+          </div>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={t.themeLabel}
+          >
+            <span aria-hidden="true">◐</span>
+            {t.theme}
+          </button>
+        </div>
       </header>
 
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Asisten feedback untuk pengajar</p>
-          <h1>Feedback yang tepat untuk setiap murid.</h1>
-          <p className="hero-description">
-            Pilih situasi, sesuaikan teks, lalu salin.
-          </p>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h1>{t.heading}</h1>
+          <p className="hero-description">{t.description}</p>
         </div>
         <div className="name-panel">
-          <label htmlFor="student-name">Nama murid</label>
+          <label htmlFor="student-name">{t.studentName}</label>
           <div className="name-input-wrap">
             <input
               id="student-name"
@@ -1264,9 +1643,11 @@ export default function Home() {
                 setDraft(
                   withName(selected.variants[variantIndex], nextName),
                 );
+                setDraftLanguage(language);
+                setIsDirty(false);
                 setCopied(false);
               }}
-              placeholder="Contoh: Ando"
+              placeholder={t.namePlaceholder}
               autoComplete="off"
             />
             {studentName && (
@@ -1278,110 +1659,124 @@ export default function Home() {
                   setDraft(
                     withName(selected.variants[variantIndex], ""),
                   );
+                  setDraftLanguage(language);
+                  setIsDirty(false);
                   setCopied(false);
                 }}
-                aria-label="Hapus nama murid"
+                aria-label={t.clearName}
               >
                 ×
               </button>
             )}
           </div>
-          <p>
-            Otomatis diterapkan pada feedback yang dipilih.
-          </p>
+          <p>{t.nameHint}</p>
         </div>
       </section>
 
-      <nav className="category-nav" aria-label="Navigasi kategori">
-        <div>
-          <a href="#feedback-library">Semua</a>
-          {groups.map((group) => (
-            <a href={`#${groupAnchor(group)}`} key={group}>
-              {group}
-            </a>
+      <nav className="category-nav" aria-label={t.categoryFilter}>
+        <div className="category-buttons">
+          <button
+            type="button"
+            className={activeGroup === "all" ? "active" : ""}
+            onClick={() => setActiveGroup("all")}
+          >
+            {t.all}
+          </button>
+          {sourceGroups.map((group) => (
+            <button
+              type="button"
+              className={activeGroup === group ? "active" : ""}
+              onClick={() => setActiveGroup(group)}
+              key={group}
+            >
+              {localizedGroup(group, language)}
+            </button>
           ))}
         </div>
+        <label className="category-select">
+          <span>{t.category}</span>
+          <select
+            value={activeGroup}
+            onChange={(event) => setActiveGroup(event.target.value)}
+          >
+            <option value="all">{t.allCategories}</option>
+            {sourceGroups.map((group) => (
+              <option value={group} key={group}>
+                {localizedGroup(group, language)}
+              </option>
+            ))}
+          </select>
+        </label>
       </nav>
 
-      <section className="workspace" id="feedback-library">
+      <section className="workspace">
         <div className="library-panel">
           <div className="library-heading">
             <div>
-              <p className="eyebrow">Pustaka feedback</p>
-              <h2>Semua situasi</h2>
+              <p className="eyebrow">{t.library}</p>
+              <h2>
+                {activeGroup === "all"
+                  ? t.allSituations
+                  : localizedGroup(activeGroup, language)}
+              </h2>
             </div>
-            <span>{feedbacks.length} situasi tersedia</span>
+            <span>
+              {visibleFeedbacks.length}{" "}
+              {t.situation}
+            </span>
           </div>
 
-          <div className="feedback-sections">
-            {groups.map((group) => {
-              const items = feedbacks.filter(
-                (feedback) => feedback.group === group,
-              );
-              const headingId = `${groupAnchor(group)}-heading`;
-
-              return (
-                <section
-                  className="feedback-section"
-                  id={groupAnchor(group)}
-                  aria-labelledby={headingId}
-                  key={group}
-                >
-                  <div className="feedback-section-heading">
-                    <h3 id={headingId}>{group}</h3>
-                    <span>{items.length} situasi</span>
-                  </div>
-                  <div className="feedback-grid">
-                    {items.map((feedback) => (
-                      <button
-                        type="button"
-                        key={feedback.id}
-                        className={`feedback-card ${
-                          selected.id === feedback.id ? "selected" : ""
-                        }`}
-                        onClick={() => chooseFeedback(feedback.id)}
-                        aria-pressed={selected.id === feedback.id}
-                      >
-                        <span className={`level-dot ${feedback.level}`} />
-                        <span className="card-content">
-                          <strong>{feedback.title}</strong>
-                          <small>
-                            {levelLabels[feedback.level]} ·{" "}
-                            {feedback.variants.length}{" "}
-                            {feedback.variants.length === 1
-                              ? "template"
-                              : "variasi"}
-                          </small>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+          <div className="feedback-grid">
+            {visibleFeedbacks.map((feedback) => (
+              <button
+                type="button"
+                key={feedback.id}
+                className={`feedback-card ${
+                  selected.id === feedback.id ? "selected" : ""
+                }`}
+                onClick={() => chooseFeedback(feedback.id)}
+                aria-pressed={selected.id === feedback.id}
+              >
+                <span className={`level-dot ${feedback.level}`} />
+                <span className="card-content">
+                  <span className="card-group">
+                    {localizedGroup(feedback.group, language)}
+                  </span>
+                  <strong>{feedback.title}</strong>
+                  <small>
+                    {t.levels[feedback.level]} · {feedback.variants.length}{" "}
+                    {feedback.variants.length === 1
+                      ? t.templates.replace(/s$/, "")
+                      : language === "id"
+                        ? "variasi"
+                        : "variations"}
+                  </small>
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
         <aside className="editor-panel" id="editor">
           <div className="editor-card">
             <div className="editor-topline">
-              <span className="editor-kicker">Feedback terpilih</span>
+              <span className="editor-kicker">{t.selected}</span>
               <span className={`level-badge ${selected.level}`}>
-                {levelLabels[selected.level]}
+                {t.levels[selected.level]}
               </span>
             </div>
             <h2>{selected.title}</h2>
 
             {selected.variants.length > 1 && (
               <div className="variant-nav">
-                <span>Pilih variasi</span>
+                <span>{t.chooseVariation}</span>
                 <div>
                   {selected.variants.map((_, index) => (
                     <button
                       type="button"
                       className={variantIndex === index ? "active" : ""}
                       onClick={() => selectVariant(index)}
-                      aria-label={`Pilih variasi ${index + 1}`}
+                      aria-label={`${t.variationLabel} ${index + 1}`}
                       aria-pressed={variantIndex === index}
                       key={index}
                     >
@@ -1393,29 +1788,36 @@ export default function Home() {
             )}
 
             <label className="draft-label" htmlFor="feedback-draft">
-              Teks feedback
+              {t.feedbackText}
             </label>
             <textarea
               id="feedback-draft"
-              value={draft}
+              value={currentDraft}
               onChange={(event) => {
                 setDraft(event.target.value);
+                setDraftLanguage(language);
+                setIsDirty(true);
                 setCopied(false);
               }}
               rows={10}
             />
             <div className="draft-meta">
-              <span>{draft.length} karakter</span>
+              <span>
+                {currentDraft.length} {t.characters}
+              </span>
               <button
                 type="button"
                 className="reset-draft"
-                onClick={() =>
+                onClick={() => {
                   setDraft(
                     withName(selected.variants[variantIndex], studentName),
-                  )
-                }
+                  );
+                  setDraftLanguage(language);
+                  setIsDirty(false);
+                  setCopied(false);
+                }}
               >
-                Pulihkan template
+                {t.restore}
               </button>
             </div>
 
@@ -1425,19 +1827,17 @@ export default function Home() {
               onClick={copyDraft}
             >
               <span>{copied ? "✓" : "▣"}</span>
-              {copied ? "Tersalin ke clipboard" : "Salin feedback"}
+              {copied ? t.copied : t.copy}
             </button>
-            <p className="editor-note">
-              Teks dapat diedit langsung sebelum disalin.
-            </p>
+            <p className="editor-note">{t.editorHint}</p>
           </div>
         </aside>
       </section>
 
       <footer>
-        <span>Ruang Feedback</span>
-        <p>Feedback personal untuk setiap proses belajar.</p>
-        <a href="#top">Kembali ke atas ↑</a>
+        <span>{t.brand}</span>
+        <p>{t.footer}</p>
+        <a href="#top">{t.backToTop}</a>
       </footer>
     </main>
   );
