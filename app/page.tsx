@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type FeedbackItem = {
   id: string;
   title: string;
   group: string;
   level: "positive" | "attention" | "technical" | "milestone" | "growth";
+  keywords?: string[];
   variants: string[];
 };
 
@@ -15,6 +16,10 @@ const groups = [
   "Keaktifan",
   "Kehadiran",
   "Fokus & Tugas",
+  "Pemahaman",
+  "Kemandirian",
+  "Kolaborasi",
+  "Ketangguhan",
   "Perkembangan",
   "Kendala Teknis",
   "Murid Baru",
@@ -65,7 +70,7 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "low-participation",
-    title: "Kurang Partisipasi",
+    title: "Partisipasi Lisan Masih Terbatas",
     group: "Keaktifan",
     level: "attention",
     variants: [
@@ -75,7 +80,7 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "passive",
-    title: "Pasif Saat Pembelajaran",
+    title: "Respons Saat Pembelajaran Belum Konsisten",
     group: "Keaktifan",
     level: "attention",
     variants: [
@@ -117,7 +122,7 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "inactive-late",
-    title: "Tidak Aktif + Sering Terlambat",
+    title: "Partisipasi & Ketepatan Waktu Perlu Dukungan",
     group: "Kehadiran",
     level: "attention",
     variants: [
@@ -127,7 +132,7 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "low-focus",
-    title: "Kurang Fokus",
+    title: "Fokus Belajar Perlu Ditingkatkan",
     group: "Fokus & Tugas",
     level: "attention",
     variants: [
@@ -138,7 +143,7 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "task-consistency",
-    title: "Perlu Peningkatan Tugas & Konsistensi",
+    title: "Penyelesaian Tugas Belum Konsisten",
     group: "Fokus & Tugas",
     level: "growth",
     variants: [
@@ -148,7 +153,7 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "inactive-task",
-    title: "Tidak Aktif + Tidak Mengerjakan Tugas",
+    title: "Partisipasi & Penyelesaian Tugas Perlu Dukungan",
     group: "Fokus & Tugas",
     level: "attention",
     variants: [
@@ -158,12 +163,13 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "inactive-camera",
-    title: "Tidak Aktif + Jarang Oncam",
+    title: "Interaksi Kelas Online Masih Terbatas",
     group: "Fokus & Tugas",
     level: "attention",
+    keywords: ["oncam", "kamera", "online", "respons"],
     variants: [
-      "{{firstname}} mengikuti kelas, namun masih jarang menyalakan kamera dan kurang berpartisipasi dalam diskusi. Keaktifan dan interaksi sangat penting agar proses belajar lebih efektif dan terpantau dengan baik.",
-      "Partisipasi {{firstname}} di kelas masih perlu ditingkatkan. Selain jarang oncam, respons terhadap pertanyaan juga masih minim. Semoga ke depannya lebih percaya diri untuk terlibat aktif.",
+      "{{firstname}} sudah mengikuti kelas daring, tetapi interaksinya masih terbatas. Diharapkan ke depannya dapat memberi respons melalui suara, chat, atau cara lain yang disepakati agar pemahaman dan keterlibatannya lebih mudah dipantau.",
+      "Partisipasi {{firstname}} dalam kelas daring masih perlu ditingkatkan. Semoga ke depannya semakin nyaman untuk merespons pertanyaan dan menyampaikan kendala melalui media interaksi yang tersedia.",
     ],
   },
   {
@@ -200,6 +206,248 @@ const feedbacks: FeedbackItem[] = [
     ],
   },
   {
+    id: "quick-needs-accuracy",
+    title: "Cepat Memahami, Perlu Lebih Teliti",
+    group: "Pemahaman",
+    level: "growth",
+    keywords: ["cepat", "ceroboh", "kurang teliti", "terburu-buru"],
+    variants: [
+      "{{firstname}} mampu memahami konsep dengan cepat dan menyelesaikan latihan dengan baik. Beberapa kesalahan kecil masih muncul karena jawabannya belum diperiksa kembali. Membiasakan diri menggunakan checklist sebelum mengumpulkan tugas akan membantu meningkatkan ketelitiannya.",
+      "Pemahaman {{firstname}} terhadap materi sudah kuat dan proses pengerjaannya tergolong cepat. Agar hasilnya semakin maksimal, {{firstname}} dapat meluangkan waktu untuk menguji kembali solusi dan memperbaiki detail yang terlewat.",
+    ],
+  },
+  {
+    id: "steady-paced-progress",
+    title: "Belajar Bertahap dengan Progres Stabil",
+    group: "Pemahaman",
+    level: "positive",
+    keywords: ["lambat", "butuh waktu", "pelan", "stabil"],
+    variants: [
+      "{{firstname}} membutuhkan waktu untuk memahami beberapa konsep, tetapi terus menunjukkan usaha dan perkembangan yang stabil. Dengan latihan bertahap dan konsisten, pemahamannya akan semakin kuat.",
+      "Proses belajar {{firstname}} berlangsung secara bertahap dan arahnya positif. Ia tetap berusaha sampai memahami materi. Mempertahankan ritme latihan yang teratur akan membantu progresnya terus berkembang.",
+    ],
+  },
+  {
+    id: "theory-to-practice",
+    title: "Memahami Konsep, Perlu Penguatan Praktik",
+    group: "Pemahaman",
+    level: "growth",
+    keywords: ["teori", "praktik", "penerapan", "implementasi"],
+    variants: [
+      "{{firstname}} sudah dapat menjelaskan konsep yang dipelajari dengan cukup baik. Penerapannya dalam latihan mandiri masih perlu diperkuat. Latihan dengan contoh yang bervariasi akan membantu menghubungkan pemahaman konsep dengan praktik.",
+      "Pemahaman teori {{firstname}} sudah baik, tetapi ia masih memerlukan arahan ketika menerapkannya pada permasalahan baru. Dengan lebih sering membuat latihan atau proyek kecil, kemampuan praktiknya akan semakin matang.",
+    ],
+  },
+  {
+    id: "strengthen-foundations",
+    title: "Dasar Konsep Perlu Diperkuat",
+    group: "Pemahaman",
+    level: "attention",
+    keywords: ["dasar", "fondasi", "tertinggal", "belum paham"],
+    variants: [
+      "{{firstname}} sudah berusaha mengikuti materi, tetapi beberapa konsep dasar masih perlu diperkuat sebelum melanjutkan ke tahap berikutnya. Mengulang contoh sederhana dan berlatih sedikit demi sedikit akan membantu membangun pemahaman yang lebih kokoh.",
+      "Pada materi dasar, {{firstname}} masih membutuhkan pendampingan agar dapat mengikuti latihan dengan lebih mandiri. Disarankan untuk meninjau kembali materi inti dan memastikan setiap langkah sudah dipahami sebelum menambah tingkat kesulitan.",
+    ],
+  },
+  {
+    id: "quiet-strong-understanding",
+    title: "Partisipasi Tenang, Pemahaman Kuat",
+    group: "Pemahaman",
+    level: "positive",
+    keywords: ["pendiam", "diam", "tidak banyak bicara", "hasil bagus"],
+    variants: [
+      "Meskipun belum banyak berpartisipasi secara lisan, {{firstname}} menunjukkan pemahaman yang baik melalui tugas dan hasil praktiknya. Semoga ke depannya semakin nyaman untuk membagikan pemikiran atau proses penyelesaiannya kepada kelas.",
+      "{{firstname}} cenderung tenang selama diskusi, tetapi mampu memahami materi dan menghasilkan pekerjaan yang baik. Keberanian untuk sesekali menjelaskan strategi yang digunakan akan semakin memperkuat kemampuan komunikasinya.",
+    ],
+  },
+  {
+    id: "active-needs-concept",
+    title: "Aktif Berpartisipasi, Konsep Perlu Dikuatkan",
+    group: "Pemahaman",
+    level: "growth",
+    keywords: ["aktif", "antusias", "belum paham", "campuran"],
+    variants: [
+      "{{firstname}} menunjukkan antusiasme dan aktif berpartisipasi selama kelas. Agar keaktifannya diikuti pemahaman yang lebih kuat, ia perlu meninjau kembali konsep inti dan menjelaskan alasan di balik setiap langkah penyelesaian.",
+      "Keberanian {{firstname}} untuk bertanya dan mencoba patut diapresiasi. Beberapa konsep masih perlu diperdalam melalui latihan terarah agar jawaban yang diberikan tidak hanya cepat, tetapi juga tepat dan berdasarkan pemahaman.",
+    ],
+  },
+  {
+    id: "independent-problem-solver",
+    title: "Pemecah Masalah yang Mandiri",
+    group: "Kemandirian",
+    level: "positive",
+    keywords: ["mandiri", "inisiatif", "problem solving", "solusi"],
+    variants: [
+      "{{firstname}} menunjukkan kemandirian yang baik saat menyelesaikan latihan. Ia mencoba memahami masalah, mencari alternatif solusi, dan baru meminta bantuan ketika diperlukan. Sikap ini sangat mendukung perkembangan kemampuan pemecahan masalahnya.",
+      "Saat menemui tantangan, {{firstname}} mampu mencoba beberapa pendekatan secara mandiri dan menjelaskan alasan pilihannya. Pertahankan inisiatif ini sambil terus membiasakan diri mengevaluasi kelebihan setiap solusi.",
+    ],
+  },
+  {
+    id: "needs-step-guidance",
+    title: "Kemandirian Belajar Perlu Dikembangkan",
+    group: "Kemandirian",
+    level: "growth",
+    keywords: ["bergantung", "diarahkan", "langkah demi langkah", "dibantu"],
+    variants: [
+      "{{firstname}} dapat menyelesaikan latihan dengan baik ketika mendapat arahan bertahap. Langkah berikutnya adalah mencoba mengerjakan bagian awal secara mandiri, lalu mencatat bagian yang masih membingungkan sebelum meminta bantuan.",
+      "Dengan panduan, {{firstname}} mampu mengikuti proses pengerjaan dengan cukup baik. Agar semakin mandiri, ia dapat mulai membuat rencana penyelesaian sederhana dan mencoba satu alternatif sebelum meminta petunjuk berikutnya.",
+    ],
+  },
+  {
+    id: "asks-help-early",
+    title: "Perlu Mencoba Sebelum Meminta Bantuan",
+    group: "Kemandirian",
+    level: "growth",
+    keywords: ["cepat bertanya", "langsung bertanya", "minta jawaban", "bergantung"],
+    variants: [
+      "{{firstname}} terbuka untuk meminta bantuan ketika mengalami kesulitan, yang merupakan sikap positif. Agar kemampuan mandirinya berkembang, ia dapat membiasakan diri membaca kembali instruksi, mencoba satu solusi, dan menyampaikan hasil percobaannya saat bertanya.",
+      "{{firstname}} cukup aktif mencari bantuan, tetapi terkadang meminta petunjuk sebelum mengeksplorasi masalah. Menerapkan kebiasaan ‘baca, coba, catat, lalu bertanya’ akan membantu membangun kepercayaan diri dan strategi belajarnya.",
+    ],
+  },
+  {
+    id: "self-review-habit",
+    title: "Kebiasaan Evaluasi Mandiri yang Baik",
+    group: "Kemandirian",
+    level: "positive",
+    keywords: ["refleksi", "evaluasi", "cek ulang", "memperbaiki"],
+    variants: [
+      "{{firstname}} menunjukkan kebiasaan belajar yang baik dengan memeriksa kembali hasil pekerjaan dan memperbaiki kesalahan secara mandiri. Sikap reflektif ini membantu pemahamannya berkembang secara konsisten.",
+      "Setelah menyelesaikan latihan, {{firstname}} mampu mengevaluasi pekerjaannya dan mengenali bagian yang perlu diperbaiki. Pertahankan kebiasaan ini karena sangat mendukung ketelitian dan kemandirian belajar.",
+    ],
+  },
+  {
+    id: "fast-needs-challenge",
+    title: "Siap Mendapat Tantangan Lanjutan",
+    group: "Kemandirian",
+    level: "positive",
+    keywords: ["cepat selesai", "bosan", "terlalu mudah", "tantangan"],
+    variants: [
+      "{{firstname}} dapat menyelesaikan latihan utama dengan cepat dan tepat. Ia siap mencoba tantangan lanjutan yang memiliki lebih dari satu kemungkinan solusi agar kemampuan analisis dan kreativitasnya semakin terasah.",
+      "Pemahaman dan kecepatan kerja {{firstname}} sudah sangat baik. Untuk menjaga motivasinya, ia dapat mengembangkan fitur tambahan atau membuat proyek mandiri yang menerapkan konsep dalam konteks baru.",
+    ],
+  },
+  {
+    id: "perfectionism-pacing",
+    title: "Hasil Teliti, Pengelolaan Waktu Perlu Dilatih",
+    group: "Kemandirian",
+    level: "growth",
+    keywords: ["perfeksionis", "terlalu lama", "lambat mengumpulkan", "detail"],
+    variants: [
+      "{{firstname}} sangat memperhatikan detail dan berusaha menghasilkan pekerjaan terbaik. Agar tugas dapat selesai tepat waktu, ia perlu menentukan prioritas dan membatasi waktu untuk penyempurnaan setelah bagian utama selesai.",
+      "Ketelitian {{firstname}} merupakan kekuatan yang baik, tetapi proses pengerjaan terkadang memerlukan waktu terlalu panjang. Membagi waktu menjadi tahap draf, pengujian, dan perbaikan akan membantu menjaga kualitas sekaligus ketepatan waktu.",
+    ],
+  },
+  {
+    id: "supportive-peer",
+    title: "Aktif Mendukung Teman Belajar",
+    group: "Kolaborasi",
+    level: "positive",
+    keywords: ["membantu teman", "mentor", "peduli", "kerja kelompok"],
+    variants: [
+      "{{firstname}} tidak hanya aktif mengikuti pembelajaran, tetapi juga bersedia membantu teman yang mengalami kesulitan. Sikap kolaboratif ini sangat positif. Pertahankan sambil tetap memberikan kesempatan kepada teman untuk mencoba menemukan jawabannya sendiri.",
+      "Dalam kegiatan kelompok, {{firstname}} menunjukkan kepedulian dengan menjelaskan materi dan mendukung teman secara positif. Kemampuan bekerja sama ini menjadi kekuatan yang baik bagi perkembangan seluruh kelompok.",
+    ],
+  },
+  {
+    id: "discussion-balance",
+    title: "Perlu Menyeimbangkan Peran dalam Diskusi",
+    group: "Kolaborasi",
+    level: "growth",
+    keywords: ["dominan", "memotong", "menguasai diskusi", "terlalu aktif"],
+    variants: [
+      "{{firstname}} memiliki banyak ide dan aktif menyampaikannya dalam diskusi. Agar kerja kelompok semakin efektif, ia perlu memberi ruang kepada teman untuk berbicara, mendengarkan sampai selesai, dan membantu merangkum berbagai pendapat.",
+      "Antusiasme {{firstname}} saat berdiskusi merupakan kekuatan yang baik. Langkah berikutnya adalah menyeimbangkan kontribusi dengan mengajak anggota lain menyampaikan ide dan mempertimbangkan solusi kelompok sebelum mengambil keputusan.",
+    ],
+  },
+  {
+    id: "group-participation",
+    title: "Kontribusi dalam Kelompok Perlu Ditingkatkan",
+    group: "Kolaborasi",
+    level: "growth",
+    keywords: ["pasif kelompok", "kerja kelompok", "tidak ikut", "kolaborasi"],
+    variants: [
+      "{{firstname}} sudah mengikuti kegiatan kelompok, tetapi kontribusinya masih terbatas. Memilih satu peran yang jelas, seperti pencatat, penguji, atau penyaji, dapat membantunya lebih terlibat dan percaya diri.",
+      "Dalam kerja kelompok, {{firstname}} masih perlu didorong untuk menyampaikan ide dan mengambil bagian dalam proses pengerjaan. Memulai dari tugas kecil yang terukur akan membantu meningkatkan rasa nyaman dan tanggung jawabnya.",
+    ],
+  },
+  {
+    id: "receptive-to-feedback",
+    title: "Menerapkan Masukan dengan Baik",
+    group: "Kolaborasi",
+    level: "positive",
+    keywords: ["feedback", "masukan", "revisi", "mau belajar"],
+    variants: [
+      "{{firstname}} menerima masukan dengan sikap terbuka dan mampu menerapkannya pada pekerjaan berikutnya. Kemampuan mendengarkan, mengevaluasi, dan melakukan perbaikan ini mendukung progres belajarnya secara nyata.",
+      "Setelah mendapat umpan balik, {{firstname}} dapat mengenali bagian yang perlu diperbaiki dan menghasilkan revisi yang lebih baik. Pertahankan sikap terbuka ini sambil mulai melatih kemampuan menilai pekerjaan sendiri.",
+    ],
+  },
+  {
+    id: "explains-reasoning",
+    title: "Mampu Menjelaskan Proses Berpikir",
+    group: "Kolaborasi",
+    level: "positive",
+    keywords: ["komunikasi", "presentasi", "menjelaskan", "alasan"],
+    variants: [
+      "{{firstname}} mampu menjelaskan langkah penyelesaian dan alasan di balik pilihannya dengan runtut. Kemampuan ini menunjukkan pemahaman yang baik sekaligus membantu teman mengikuti proses berpikirnya.",
+      "Saat mempresentasikan hasil, {{firstname}} dapat menyampaikan ide dengan jelas dan menanggapi pertanyaan secara relevan. Terus kembangkan kemampuan ini dengan membandingkan beberapa pendekatan yang mungkin digunakan.",
+    ],
+  },
+  {
+    id: "persistent-debugging",
+    title: "Tekun Menghadapi Kesulitan",
+    group: "Ketangguhan",
+    level: "positive",
+    keywords: ["pantang menyerah", "tekun", "debugging", "error"],
+    variants: [
+      "Saat menemui kesulitan, {{firstname}} tetap tenang dan mencoba beberapa cara sampai menemukan penyebab masalah. Ketekunan ini merupakan modal penting untuk mengembangkan kemampuan pemecahan masalah.",
+      "{{firstname}} menunjukkan ketangguhan yang baik ketika hasil percobaan belum sesuai harapan. Ia bersedia membaca kembali instruksi, menguji solusi, dan belajar dari kesalahan tanpa mudah menyerah.",
+    ],
+  },
+  {
+    id: "frustrated-by-errors",
+    title: "Perlu Strategi Saat Menghadapi Error",
+    group: "Ketangguhan",
+    level: "growth",
+    keywords: ["mudah menyerah", "frustrasi", "emosi", "error", "kesal"],
+    variants: [
+      "{{firstname}} sudah mampu mengikuti materi dengan cukup baik. Saat menemui error, ia masih memerlukan dorongan untuk berhenti sejenak, membaca pesan kesalahan, dan mencoba satu perbaikan pada satu waktu. Strategi ini akan membantu membangun ketenangan dan kemandiriannya.",
+      "Ketika solusi pertama belum berhasil, {{firstname}} terkadang kehilangan kepercayaan diri. Dengan membagi masalah menjadi langkah kecil dan mencatat apa yang sudah dicoba, ia akan lebih mudah melihat progres dan menemukan alternatif berikutnya.",
+    ],
+  },
+  {
+    id: "learns-from-mistakes",
+    title: "Belajar Positif dari Kesalahan",
+    group: "Ketangguhan",
+    level: "positive",
+    keywords: ["salah", "revisi", "bangkit", "refleksi"],
+    variants: [
+      "{{firstname}} mampu menyikapi kesalahan sebagai bagian dari proses belajar. Ia bersedia meninjau kembali pekerjaannya, memahami penyebab kesalahan, dan mencoba solusi yang lebih tepat.",
+      "Setelah mengalami kesulitan, {{firstname}} dapat kembali mencoba dengan strategi yang lebih baik. Sikap terbuka terhadap kesalahan ini membantu membangun pemahaman yang lebih kuat dan tahan lama.",
+    ],
+  },
+  {
+    id: "inconsistent-motivation",
+    title: "Semangat Belajar Belum Konsisten",
+    group: "Ketangguhan",
+    level: "growth",
+    keywords: ["motivasi", "mood", "naik turun", "tidak konsisten"],
+    variants: [
+      "{{firstname}} dapat menunjukkan antusiasme dan hasil yang baik ketika sedang terlibat penuh, tetapi semangat belajarnya belum konsisten di setiap pertemuan. Menetapkan target kecil untuk setiap sesi dapat membantu menjaga ritme dan rasa pencapaiannya.",
+      "Potensi {{firstname}} terlihat saat ia fokus dan berusaha menyelesaikan tantangan. Agar progresnya lebih stabil, ia dapat menggunakan rutinitas belajar singkat dan mencatat satu kemajuan yang berhasil dicapai pada setiap pertemuan.",
+    ],
+  },
+  {
+    id: "tries-new-strategies",
+    title: "Berani Mencoba Strategi Baru",
+    group: "Ketangguhan",
+    level: "positive",
+    keywords: ["kreatif", "eksperimen", "alternatif", "strategi"],
+    variants: [
+      "{{firstname}} berani mencoba pendekatan baru ketika cara pertama belum berhasil. Sikap eksploratif ini membantu memperluas pemahamannya dan menunjukkan fleksibilitas dalam menyelesaikan masalah.",
+      "Dalam mengerjakan tantangan, {{firstname}} tidak terpaku pada satu cara dan bersedia membandingkan beberapa strategi. Pertahankan keberanian bereksperimen sambil tetap menguji ketepatan setiap solusi.",
+    ],
+  },
+  {
     id: "device",
     title: "Kendala Device / Teknis",
     group: "Kendala Teknis",
@@ -219,7 +467,7 @@ const feedbacks: FeedbackItem[] = [
   },
   {
     id: "device-performance",
-    title: "Performa Device Kurang Mendukung",
+    title: "Pembelajaran Terdampak Kendala Perangkat",
     group: "Kendala Teknis",
     level: "technical",
     variants: [
@@ -364,7 +612,9 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(feedbacks[0].id);
   const [variantIndex, setVariantIndex] = useState(0);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() =>
+    withName(feedbacks[0].variants[0], ""),
+  );
   const [copied, setCopied] = useState(false);
 
   const selected =
@@ -379,6 +629,9 @@ export default function Home() {
         !keyword ||
         feedback.title.toLocaleLowerCase("id").includes(keyword) ||
         feedback.group.toLocaleLowerCase("id").includes(keyword) ||
+        feedback.keywords?.some((item) =>
+          item.toLocaleLowerCase("id").includes(keyword),
+        ) ||
         feedback.variants.some((variant) =>
           variant.toLocaleLowerCase("id").includes(keyword),
         );
@@ -386,14 +639,12 @@ export default function Home() {
     });
   }, [activeGroup, query]);
 
-  useEffect(() => {
-    setDraft(withName(selected.variants[variantIndex], studentName));
-    setCopied(false);
-  }, [selected, variantIndex, studentName]);
-
   function chooseFeedback(id: string) {
+    const nextFeedback =
+      feedbacks.find((feedback) => feedback.id === id) ?? feedbacks[0];
     setSelectedId(id);
     setVariantIndex(0);
+    setDraft(withName(nextFeedback.variants[0], studentName));
     setCopied(false);
     if (window.innerWidth < 980) {
       requestAnimationFrame(() =>
@@ -406,7 +657,10 @@ export default function Home() {
 
   function changeVariant(direction: number) {
     const total = selected.variants.length;
-    setVariantIndex((current) => (current + direction + total) % total);
+    const nextIndex = (variantIndex + direction + total) % total;
+    setVariantIndex(nextIndex);
+    setDraft(withName(selected.variants[nextIndex], studentName));
+    setCopied(false);
   }
 
   async function copyDraft() {
@@ -466,7 +720,14 @@ export default function Home() {
             <input
               id="student-name"
               value={studentName}
-              onChange={(event) => setStudentName(event.target.value)}
+              onChange={(event) => {
+                const nextName = event.target.value;
+                setStudentName(nextName);
+                setDraft(
+                  withName(selected.variants[variantIndex], nextName),
+                );
+                setCopied(false);
+              }}
               placeholder="Contoh: Ando"
               autoComplete="off"
             />
@@ -474,7 +735,13 @@ export default function Home() {
               <button
                 type="button"
                 className="clear-name"
-                onClick={() => setStudentName("")}
+                onClick={() => {
+                  setStudentName("");
+                  setDraft(
+                    withName(selected.variants[variantIndex], ""),
+                  );
+                  setCopied(false);
+                }}
                 aria-label="Hapus nama murid"
               >
                 ×
